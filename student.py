@@ -1,206 +1,160 @@
-''''''
-# '''
-# DATABASE CREATION
-# '''
-import sqlite3 as sq
-database=sq.connect('management.db')
-curs=database.cursor()
-# query="""
-# create table student(
-# sid integer primary key AutoIncrement,
-# sname text not null,
-# phno integer  not null check (length(phno)=10),
-# dob date not null,
-# gender varchar(2) not null,
-# address text not null,
-# photo blob not null
-# )"""
-
-
-# curs.execute(query)
-
-# '''
-# FRONT END PAGE
-
-
+import sqlite3
 import streamlit as st
 from time import sleep
-# functoions
+
+# ---------- DATABASE ----------
+db = sqlite3.connect("management.db", check_same_thread=False)
+cur = db.cursor()
+
+#--------lOGIN-FUNCTION--------
 def login():
-    user_name=st.text_input('USER_NAME:')
-    password=st.text_input('PASSWORD',type='password')
-    login=st.button('LOGIN',type='primary')
-    if login:
-        if user_name=='admin' and password=='Admin@123':
-            st.session_state.is_logged=True
-            st.success('login successful')
+    st.subheader("Admin Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if username == "admin" and password == "Admin@123":
+            st.session_state.logged_in = True
+            st.success("Login successful ✅")
             st.rerun()
-def add():
-    name=st.text_input('enter your name:')
-    phno =st.text_input('enter your phno')
-    dob=st.date_input('choose the date:')
-    gender=st.radio('choose your gender',['male','female'])
-    address=st.text_area('enter your address')
-    photo=st.file_uploader('upload your photo',type=['jpg','png','svg','img'])
-    insert=st.button('INSERT',type='primary')
-    if insert:
-        try:
-            query="insert into student (sname,phno,dob,gender,address,photo) values(?,?,?,?,?,?)"
-            photo_in_binary=photo.read()
-            curs.execute(query,(name,phno,dob,gender,address,photo_in_binary))
-            database.commit()
-        except sq.DatabaseError as e:
-            st.error('not update')
         else:
-            st.write('you record duccesfully update')
-           
-
-def remove():
-    _name=st.text_input('enter name: ')
-    phno=st.text_input('enter phone: ')
-    button=st.button('Delet',type='primary')
-    query="""
-        
-         delete from student
-         where sname=? and phno=?
-
-     """
-    if button:
-        
-        try:
-           curs.execute(query,(_name,phno))
-           database.commit()
-       
-
-           if curs.rowcount == 0:
-               st.warning("Record not found ❗")
-           else:
-               sleep(0.5)
-               st.success("Record deleted successfully 🗑️")
-
-        except sq.DatabaseError as e:
-            sleep(0.5)
-            st.error("Database error occurred")
-
- 
-def update():
-
-    n1=st.text_input('enetr update name:')
-    p1=st.text_input('enetr phone number:')
-    find=st.button('find',type='primary')
-
-    if'versione' not in st.session_state:
-        st.session_state.versione=False
-    
-    if st.session_state.versione:
-        li=['name','phno','date of birth','gender','address','photo']
-        radio=st.radio('select the update',li)
-        if radio=='name':
-           col='sname'
-           name=st.text_input('enter your name:')
-        elif radio=='phno':
-           col='phno'
-           name=st.text_input('enter your phno')
-
-        elif radio=='date of birth':
-           col='dob'
-           name=st.date_input('choose the date:')
-        elif radio=='gender':
-           col='gender'
-           name=st.radio('choose your gender',['male','female'])
-        elif radio=='address':
-           col='address'
-           name=st.text_area('enter your address')
-        elif radio=='photo':
-           col='photo'
-           name8=st.file_uploader('upload your photo',type=['jpg','png','svg','img'])
-           if name8 != None:
-               name=name8.read()
-
-
-        upd=st.button('update',type='primary')
-        if upd:
-          try:
-             curs.execute(f'update  student set {col}=? where sname=? and phno=?',(name,n1,p1))
-             database.commit()
-          except sq.DatabaseError as e:
-             st.error(f"Database error: {e}")
-          else:
-             st.write('you profile update')
-    
-        
-                 
-    if find:
-        try:
-            res=curs.execute('select sname,phno from student where sname = ?  ;',(n1,)).fetchall()[0]
-            if res[0]==n1 :
-              st.session_state.versione=True
-              
-            else:
-              st.error('you record not present in table')
-        except sq.DatabaseError as e:
-            st.error(f"Database error: {e}")
+            st.error("Invalid credentials ❌")
             
-def display():
-    n1 = st.text_input('Enter name:')
-    ph1 = st.text_input('Enter the phone number')
-    show = st.button('Find', type='primary')
+#------------ADD-STUDENT--------------
+            
+def add_student():
+    st.subheader("Add Student")
 
-    if show:
+    name = st.text_input("Name")
+    phone = st.text_input("Phone Number")
+    dob = st.date_input("Date of Birth")
+    gender = st.radio("Gender", ["male", "female"])
+    address = st.text_area("Address")
+    photo = st.file_uploader("Upload Photo", ["jpg", "png"])
+
+    if st.button("Insert"):
+        if photo is None:
+            st.warning("Upload photo first")
+            return
+
         try:
-            res = curs.execute(
-                'SELECT * FROM student WHERE sname=? AND phno=?;',
-                (n1, ph1)
-            ).fetchone()
+            cur.execute(
+                "INSERT INTO student VALUES (NULL,?,?,?,?,?,?)",
+                (name, phone, dob, gender, address, photo.read())
+            )
+            db.commit()
+            st.success("Student added successfully 🎉")
+        except Exception as e:
+            st.error(e)
+            
+#----------REMOVE-STUDENT--------------
+            
+def remove_student():
+    st.subheader("Remove Student")
 
-            if res is None:
-                st.error('Your record is not present')
-            else:
-                st.success(
-                    f"""
-                    Name: {res[1]}
-                    Phone Number: {res[2]}
-                    Date of Birth: {res[3]}
-                    """
-                )
+    name = st.text_input("Name")
+    phone = st.text_input("Phone Number")
 
-        except sq.DatabaseError as e:
-            st.error(f'Database error: {e}')
+    if st.button("Delete"):
+        cur.execute(
+            "DELETE FROM student WHERE sname=? AND phno=?",
+            (name, phone)
+        )
+        db.commit()
 
-        
-    
-     
+        if cur.rowcount == 0:
+            st.warning("Record not found ❗")
+        else:
+            st.success("Record deleted 🗑️")
+            
+#----------UPDATE-STUDENT-----------
+def update_student():
+    st.subheader("Update Student")
 
-    
-   
+    name = st.text_input("Existing Name")
+    phone = st.text_input("Existing Phone")
 
-    
+    if st.button("Find"):
+        data = cur.execute(
+            "SELECT * FROM student WHERE sname=? AND phno=?",
+            (name, phone)
+        ).fetchone()
 
+        if data is None:
+            st.error("Student not found ❌")
+            return
 
+        field = st.selectbox(
+            "What to update?",
+            ["Name", "Phone", "DOB", "Gender", "Address"]
+        )
 
-# we are creating the variable called is_logged in the session state
-if 'is_logged' not in st.session_state:
-    st.session_state.is_logged=False
-# if is_logged is True then if will be executed
-if st.session_state.is_logged:
-    menu=['add a student','remove the student','update the student','display the students']
-    option=st.radio('CHOOSE:',menu)
-    if option=='add a student':
-        add()
-    elif option == 'remove the student':
-        remove()
-    elif option == 'update the student':
-        update()
-    elif option=='display the students':
-        display()
-    
+        new_value = st.text_input("New Value")
+
+        column_map = {
+            "Name": "sname",
+            "Phone": "phno",
+            "DOB": "dob",
+            "Gender": "gender",
+            "Address": "address"
+        }
+
+        if st.button("Update"):
+            cur.execute(
+                f"UPDATE student SET {column_map[field]}=? WHERE sname=? AND phno=?",
+                (new_value, name, phone)
+            )
+            db.commit()
+            st.success("Updated successfully ✨")
+            
+#-------DISPLAY-STUDENT-----------
+            
+def display_student():
+    st.subheader("Display Student")
+
+    name = st.text_input("Name")
+    phone = st.text_input("Phone")
+
+    if st.button("Show"):
+        data = cur.execute(
+            "SELECT * FROM student WHERE sname=? AND phno=?",
+            (name, phone)
+        ).fetchone()
+
+        if data:
+            st.success(f"""
+            Name: {data[1]}
+            Phone: {data[2]}
+            DOB: {data[3]}
+            Gender: {data[4]}
+            Address: {data[5]}
+            """)
+        else:
+            st.error("Record not found")
+
+#-------------MAIN-FLOW-----------
+            
+            
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if st.session_state.logged_in:
+    menu = st.radio(
+        "Choose option",
+        ["Add", "Remove", "Update", "Display"]
+    )
+
+    if menu == "Add":
+        add_student()
+    elif menu == "Remove":
+        remove_student()
+    elif menu == "Update":
+        update_student()
+    else:
+        display_student()
 else:
     login()
-
-
-
-
-
 
 
 
